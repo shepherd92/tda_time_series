@@ -1,0 +1,55 @@
+{
+    "editor.formatOnSave": true,
+    "files.exclude": {
+        "**/__pycache__": true,
+        "**/.mypy_cache": true,
+    },
+    "python.analysis.typeCheckingMode": "off",
+    "python.analysis.diagnosticMode": "workspace",
+    "python.analysis.exclude": [
+        "backup",
+        "sandbox"
+    ],
+    "python.analysis.extraPaths": [
+        "/home/au725389/venv/tda/lib/python3.11/site-packages",
+        "/home/au725389/venv/tda/lib/python3.11/site-packages/gudhi"
+    ],
+    "python.analysis.indexing": true,
+    "python.autoComplete.extraPaths": [
+        "/home/au725389/venv/tda/lib/python3.11/site-packages",
+        "/home/au725389/venv/tda/lib/python3.11/site-packages/gudhi"
+    ],
+    "python.defaultInterpreterPath": "/home/au725389/venv/tda/bin/python3",
+    "python.formatting.provider": "autopep8",
+    "python.formatting.autopep8Args": [
+        "--max-line-length",
+        "120",
+        "--experimental"
+    ],
+    "python.linting.enabled": true,
+    "python.linting.pylintEnabled": true,
+    "python.linting.pylintPath": "~/venv/tda/bin/pylint",
+    "python.linting.pylintArgs": [
+        "--disable=F0401",
+        "--max-line-length=120",
+        "--extension-pkg-whitelist=scipy, gudhi"
+    ],
+    "python.linting.flake8Enabled": true,
+    "python.linting.flake8Args": [
+        "--max-line-length=120"
+    ],
+    "python.linting.mypyEnabled": false,
+    "python.linting.pydocstyleEnabled": true,
+    "python.linting.banditEnabled": true,
+    "python.linting.pycodestyleEnabled": true,
+    "python.linting.pycodestyleArgs": [
+        "--max-line-length=120"
+    ],
+    "python.linting.prospectorEnabled": false,
+    "python.linting.prospectorArgs": [
+        ""
+    ],
+    "python.languageServer": "Pylance",
+    "python.pipenvPath": "/home/au725389/venv/tda/bin/python3",
+    "python.terminal.activateEnvironment": true
+}

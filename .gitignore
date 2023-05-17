@@ -1,0 +1,10 @@
+*.log
+output
+*.pyc
+**/__pycache__
+*_bkp
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json

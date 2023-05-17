@@ -1,0 +1,7 @@
+gudhi==3.7.1
+matplotlib==3.6.2
+networkx==2.8.8
+numpy
+pandas==1.5.1
+scipy==1.10.1
+tqdm==4.64.1

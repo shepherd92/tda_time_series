@@ -1,0 +1,12 @@
+{
+    "log_level": "DEBUG",
+    "profiling": false,
+    "num_of_processes": 1,
+    "embedding_dimension": 5,
+    "window_size": 20,
+    "max_dimension": 3,
+    "directories": {
+        "data": "data",
+        "output": "output"
+    }
+}
