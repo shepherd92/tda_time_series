@@ -12,6 +12,7 @@ from subprocess import Popen, PIPE, call, check_output
 
 import gudhi
 import matplotlib.pyplot as plt
+import pandas as pd
 from tqdm import tqdm
 
 from configuration import Configuration
@@ -37,27 +38,56 @@ def main(configuration: Configuration) -> None:
     figure = database.visualize()
     figure.savefig(configuration.directories.output / 'data_series.png')
 
-    for column in database.data.columns:
+    # create_persistence_diagrams(
+    #     database.data,
+    #     configuration.embedding_dimension,
+    #     configuration.window_size,
+    #     configuration.directories.output / 'raw_persistence_diagrams'
+    # )
+    create_persistence_diagrams(
+        database.log_returns,
+        configuration.embedding_dimension,
+        configuration.window_size,
+        configuration.directories.output / 'log_return_persistence_diagrams'
+    )
+    # write_persistence_diagrams(persistence_diagrams, configuration.directories.output / 'persistence_diagram_csvs')
+
+
+def create_persistence_diagrams(
+    data: pd.DataFrame,
+    embedding_dimension: int,
+    window_size: int,
+    output_directory: Path,
+):
+    """Create a list of persistence diagrams."""
+    for column in data.columns:
         time_delay_embedding = TimeDelayEmbedding()
-        time_delay_embedding.create(database.data[column], embedding_dimension=configuration.embedding_dimension)
+        time_delay_embedding.create(data[column], embedding_dimension=embedding_dimension)
 
         point_cloud = PointCloud()
-        point_cloud.create(time_delay_embedding, window_size=configuration.window_size)
+        point_cloud.create(time_delay_embedding, window_size=window_size)
+        deviation_dates, standard_deviations = point_cloud.calculate_standard_deviations()
+        mean_difference_of_windows_dates, mean_difference_of_windows = \
+            point_cloud.calculate_mean_difference_of_windows()
 
-        simplicial_complex_set = SimplicialComplexSet(point_cloud.data)
+        simplicial_complex_set_properties = SimplicialComplexSet.Properties(
+            column,
+            window_size,
+            embedding_dimension,
+            dates=point_cloud.dates
+        )
+        simplicial_complex_set = SimplicialComplexSet(simplicial_complex_set_properties, point_cloud.data)
         simplicial_complex_set.create()
         persistence_diagrams = simplicial_complex_set.calc_persistences()
-        # write_persistence_diagrams(persistence_diagrams, configuration.directories.output / 'persistence_diagram_csvs')
-        export_persistence_diagrams(persistence_diagrams, configuration.directories.output / column /
-                                    'persistence_diagram_figures')
+        export_persistence_diagrams(persistence_diagrams, output_directory / column)
 
 
-def write_persistence_diagrams(persistences, directory: Path) -> None:
+def write_persistence_diagrams(persistences: list[PersistenceDiagram], directory: Path) -> None:
     """Create the peristence diagrams and export them."""
     directory.mkdir(parents=True)
 
-    for index, persistence_diagram in tqdm(enumerate(persistences)):
-        gudhi.write_persistence_diagram(str(directory / f'persistence_diagram_{index}.csv'))
+    for persistence_diagram in tqdm(persistences):
+        persistence_diagram.save(directory)
 
 
 def export_persistence_diagrams(persistences: list[PersistenceDiagram], directory: Path) -> None:
@@ -65,10 +95,10 @@ def export_persistence_diagrams(persistences: list[PersistenceDiagram], director
     directory.mkdir(parents=True)
 
     for index, persistence_diagram in tqdm(enumerate(persistences)):
-        if persistence_diagram.betti_number(1) > 1:
-            figure, axes = plt.subplots(1, 1)
-            persistence_diagram.plot(axes)
-            figure.savefig(directory / f'persistence_diagram_{index}.png')
+        # if persistence_diagram.betti_number(1) > 1:
+        figure, axes = plt.subplots(1, 1)
+        persistence_diagram.plot(axes)
+        figure.savefig(directory / f'persistence_diagram_{index}.png')
 
 
 def create_parser() -> ArgumentParser:
