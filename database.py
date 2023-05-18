@@ -33,9 +33,10 @@ class Database:
 
     def visualize(self) -> plt.Figure:
         """Visualize the data."""
-        figure, (subfig_1, subfig_2) = plt.subplots(2, 1)
-        self._visualize_data_frame(self._data, subfig_1)
+        figure, (subfig_1, subfig_2, subfig_3) = plt.subplots(3, 1)
+        self._visualize_data_frame(self.data, subfig_1)
         self._visualize_data_frame(self.returns, subfig_2)
+        self._visualize_data_frame(self.log_returns, subfig_3)
         return figure
 
     def export(self, output_directory: Path) -> None:

@@ -10,7 +10,6 @@ from pathlib import Path
 from pstats import Stats, SortKey
 from subprocess import Popen, PIPE, call, check_output
 
-import gudhi
 import matplotlib.pyplot as plt
 import pandas as pd
 from tqdm import tqdm
@@ -18,6 +17,7 @@ from tqdm import tqdm
 from configuration import Configuration
 from database import Database
 from persistence_diagram import PersistenceDiagram
+from persistence_landscape import PersistenceLandscape
 from point_cloud import PointCloud
 from simplicial_complex import SimplicialComplexSet
 from time_delay_embedding import TimeDelayEmbedding
@@ -38,67 +38,86 @@ def main(configuration: Configuration) -> None:
     figure = database.visualize()
     figure.savefig(configuration.directories.output / 'data_series.png')
 
-    # create_persistence_diagrams(
-    #     database.data,
-    #     configuration.embedding_dimension,
-    #     configuration.window_size,
-    #     configuration.directories.output / 'raw_persistence_diagrams'
-    # )
-    create_persistence_diagrams(
-        database.log_returns,
-        configuration.embedding_dimension,
-        configuration.window_size,
-        configuration.directories.output / 'log_return_persistence_diagrams'
-    )
-    # write_persistence_diagrams(persistence_diagrams, configuration.directories.output / 'persistence_diagram_csvs')
+    pipeline(database.data, 'raw', configuration)
+    pipeline(database.log_returns, 'log_returns', configuration)
 
 
-def create_persistence_diagrams(
-    data: pd.DataFrame,
-    embedding_dimension: int,
-    window_size: int,
-    output_directory: Path,
-):
-    """Create a list of persistence diagrams."""
-    for column in data.columns:
-        time_delay_embedding = TimeDelayEmbedding()
-        time_delay_embedding.create(data[column], embedding_dimension=embedding_dimension)
+def pipeline(data: pd.DataFrame, output_directory_prefix: str, configuration: Configuration) -> None:
+    """Run the entire pipeline for a time series."""
+    for company_ticker in data.columns:
+        time_delay_embedding = create_time_delay_embedding(data[company_ticker], configuration.embedding_dimension)
+        point_cloud = create_point_cloud(time_delay_embedding, configuration.window_size)
+        std_plot = calculate_standard_deviations(point_cloud)
+        std_plot.savefig(
+            configuration.directories.output / f'{output_directory_prefix}_standard_deviations_{company_ticker}.png'
+        )
+        simplicial_complex_set = create_simplex_trees(point_cloud, company_ticker)
 
-        point_cloud = PointCloud()
-        point_cloud.create(time_delay_embedding, window_size=window_size)
-        deviation_dates, standard_deviations = point_cloud.calculate_standard_deviations()
         mean_difference_of_windows_dates, mean_difference_of_windows = \
             point_cloud.calculate_mean_difference_of_windows()
 
-        simplicial_complex_set_properties = SimplicialComplexSet.Properties(
-            column,
-            window_size,
-            embedding_dimension,
-            dates=point_cloud.dates
+        # persistence_diagrams = simplicial_complex_set.calc_persistence_diagrams()
+        # export_persistence_diagrams(
+        #     persistence_diagrams,
+        #     configuration.directories.output / f'{output_directory_prefix}_persistence_diagrams' / company_ticker
+        # )
+        persistence_landscapes = simplicial_complex_set.calc_persistence_landscapes()
+        export_persistence_landscapes(
+            persistence_landscapes,
+            configuration.directories.output / f'{output_directory_prefix}_persistence_landscapes' / company_ticker
         )
-        simplicial_complex_set = SimplicialComplexSet(simplicial_complex_set_properties, point_cloud.data)
-        simplicial_complex_set.create()
-        persistence_diagrams = simplicial_complex_set.calc_persistences()
-        export_persistence_diagrams(persistence_diagrams, output_directory / column)
 
 
-def write_persistence_diagrams(persistences: list[PersistenceDiagram], directory: Path) -> None:
+def create_time_delay_embedding(data: pd.Series, embedding_dimension: int) -> TimeDelayEmbedding:
+    """Create a time delay embedding from a time series."""
+    time_delay_embedding = TimeDelayEmbedding()
+    time_delay_embedding.create(data, embedding_dimension=embedding_dimension)
+    return time_delay_embedding
+
+
+def create_point_cloud(time_delay_embedding: TimeDelayEmbedding, window_size: int) -> PointCloud:
+    """Create a point cloud from a time delay embedded time series."""
+    point_cloud = PointCloud()
+    point_cloud.create(time_delay_embedding, window_size=window_size)
+    return point_cloud
+
+
+def create_simplex_trees(point_cloud: PointCloud, name: str) -> SimplicialComplexSet:
+    """Create simplex trees from a series of point clouds."""
+    simplicial_complex_set = SimplicialComplexSet(name)
+    simplicial_complex_set.create(point_cloud)
+    return simplicial_complex_set
+
+
+def calculate_standard_deviations(point_cloud: PointCloud) -> tuple[plt.Figure]:
+    """Create standard deviations plot."""
+    figure, axes = plt.subplots(1, 1)
+    dates, standard_deviations = point_cloud.calculate_standard_deviations()
+    axes.plot(dates, standard_deviations)
+    return figure
+
+    mean_difference_of_windows_dates, mean_difference_of_windows = \
+        point_cloud.calculate_mean_difference_of_windows()
+
+
+def export_persistence_diagrams(persistence_diagrams: list[PersistenceDiagram], directory: Path) -> None:
     """Create the peristence diagrams and export them."""
     directory.mkdir(parents=True)
 
-    for persistence_diagram in tqdm(persistences):
-        persistence_diagram.save(directory)
-
-
-def export_persistence_diagrams(persistences: list[PersistenceDiagram], directory: Path) -> None:
-    """Create the peristence diagrams and export them."""
-    directory.mkdir(parents=True)
-
-    for index, persistence_diagram in tqdm(enumerate(persistences)):
-        # if persistence_diagram.betti_number(1) > 1:
+    for index, persistence_diagram in tqdm(enumerate(persistence_diagrams)):
         figure, axes = plt.subplots(1, 1)
         persistence_diagram.plot(axes)
         figure.savefig(directory / f'persistence_diagram_{index}.png')
+
+
+def export_persistence_landscapes(persistence_landscapes: list[PersistenceLandscape], directory: Path) -> None:
+    """Create the peristence diagrams and export them."""
+    directory.mkdir(parents=True)
+
+    for index, persistence_landscape in tqdm(enumerate(persistence_landscapes)):
+        figure, axes = plt.subplots(1, 1)
+        persistence_landscape.plot(axes, 3)
+        figure.savefig(directory / f'persistence_landscape_{index}.png')
 
 
 def create_parser() -> ArgumentParser:

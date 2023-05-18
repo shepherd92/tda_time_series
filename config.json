@@ -3,7 +3,7 @@
     "profiling": false,
     "num_of_processes": 1,
     "embedding_dimension": 3,
-    "window_size": 52,
+    "window_size": 10,
     "max_dimension": 2,
     "directories": {
         "data": "data",

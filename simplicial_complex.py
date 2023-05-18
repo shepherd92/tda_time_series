@@ -2,37 +2,34 @@
 """Simplicial complex module. Handles a series of simplicial complexes."""
 
 from datetime import date
-from typing import NamedTuple
 
 import gudhi
-import numpy as np
-import numpy.typing as npt
 
 from persistence_diagram import PersistenceDiagram
+from persistence_landscape import PersistenceLandscape
+from point_cloud import PointCloud
 
 
 class SimplicialComplexSet:
     """Simplicial complexes created from the time series."""
 
-    class Properties(NamedTuple):
-        """List all properties of the set of simplicial complexes."""
-
-        company: str
-        window_size: int
-        embedding_dimension: int
-        dates: list[date]
-
     MAX_DIMENSION = 8
 
-    def __init__(self, properties: Properties, point_cloud_data: npt.NDArray[np.float_]) -> None:
+    def __init__(self, company: str) -> None:
         """Construct a SimplicialComplex object."""
-        self._properties: SimplicialComplexSet.Properties = properties
-        self._point_clouds: npt.NDArray[np.float_] = point_cloud_data
+        self._name: str = company
         self._simplex_trees: list[gudhi.SimplexTree] = []
+        self._embedding_dimension: int = 0
+        self._window_size: int = 0
+        self._dates: list[date] = []
 
-    def create(self) -> None:
+    def create(self, point_cloud: PointCloud) -> None:
         """Create point clouds from database."""
-        for time_data in self._point_clouds:
+        self._dates = point_cloud.dates
+        self._embedding_dimension = point_cloud.embedding_dimension
+        self._window_size = point_cloud.window_size
+
+        for time_data in point_cloud.data:
             rips_complex = gudhi.RipsComplex(points=time_data, max_edge_length=100.)
             simplex_tree = rips_complex.create_simplex_tree(max_dimension=SimplicialComplexSet.MAX_DIMENSION)
             simplex_tree.compute_persistence()
@@ -42,17 +39,40 @@ class SimplicialComplexSet:
         """Return the entire point clouds."""
         return self._simplex_trees[time_index]
 
-    def calc_persistences(self) -> list[PersistenceDiagram]:
-        """Create the peristence diagrams and export them."""
-        persistences: list[PersistenceDiagram] = []
-        for date_, simplex_tree in zip(self._properties.dates, self._simplex_trees):
-            persistence_diagram_properties = PersistenceDiagram.Properties(
-                self._properties.company,
-                self._properties.window_size,
-                self._properties.embedding_dimension,
-                date_,
-            )
-            persistence_diagram = PersistenceDiagram(persistence_diagram_properties, simplex_tree)
-            persistences.append(persistence_diagram)
+    def calc_persistence_diagrams(self) -> list[PersistenceDiagram]:
+        """Create the peristence diagrams."""
+        persistence_diagrams: list[PersistenceDiagram] = []
+        for date_, simplex_tree in zip(self.dates, self._simplex_trees):
+            persistence_diagram = PersistenceDiagram(self.name, date_, simplex_tree)
+            persistence_diagrams.append(persistence_diagram)
 
-        return persistences
+        return persistence_diagrams
+
+    def calc_persistence_landscapes(self) -> list[PersistenceLandscape]:
+        """Create the peristence landscapes."""
+        persistence_landscapes: list[PersistenceLandscape] = []
+        for date_, simplex_tree in zip(self.dates, self._simplex_trees):
+            persistence_landscape = PersistenceLandscape(self.name, date_, simplex_tree)
+            persistence_landscapes.append(persistence_landscape)
+
+        return persistence_landscapes
+
+    @property
+    def name(self) -> str:
+        """Return the name member."""
+        return self._name
+
+    @property
+    def dates(self) -> list[date]:
+        """Return the dates member."""
+        return self._dates
+
+    @property
+    def window_size(self) -> int:
+        """Return the window_size member."""
+        return self._window_size
+
+    @property
+    def embedding_dimension(self) -> int:
+        """Return the embedding_dimension member."""
+        return self._embedding_dimension
