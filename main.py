@@ -20,6 +20,7 @@ from tqdm import tqdm
 
 from configuration import Configuration
 from database import Database
+from market_conditions import MarketConditionCalculator
 from persistence_diagram import PersistenceDiagram
 from persistence_landscape import PersistenceLandscape
 from point_cloud import PointCloud
@@ -36,17 +37,24 @@ def main(configuration: Configuration) -> None:
 
     SimplicialComplexSet.MAX_DIMENSION = configuration.max_dimension
 
-    database = Database(configuration.directories.data)
+    database = Database(configuration.directories.data / 'prices')
     database.load()
     database.export(configuration.directories.output)
     figure = database.visualize()
     figure.savefig(configuration.directories.output / 'data_series.png')
 
-    pipeline(database.data, 'raw', configuration)
-    pipeline(database.log_returns, 'log_returns', configuration)
+    market_condition_calculator = MarketConditionCalculator(configuration.directories.data / 'recessions.csv')
+
+    pipeline(database.data,        market_condition_calculator, 'raw',         configuration)
+    pipeline(database.log_returns, market_condition_calculator, 'log_returns', configuration)
 
 
-def pipeline(data: pd.DataFrame, output_directory_prefix: str, configuration: Configuration) -> None:
+def pipeline(
+    data: pd.DataFrame,
+    market_condition_calculator: MarketConditionCalculator,
+    output_directory_prefix: str,
+    configuration: Configuration
+) -> None:
     """Run the entire pipeline for a time series."""
     for company_ticker in data.columns:
         time_delay_embedding = create_time_delay_embedding(data[company_ticker], configuration.embedding_dimension)
@@ -57,6 +65,7 @@ def pipeline(data: pd.DataFrame, output_directory_prefix: str, configuration: Co
             configuration.directories.output / f'{output_directory_prefix}_standard_deviations_{company_ticker}.png'
         )
         simplicial_complex_set = create_simplex_trees(point_cloud, company_ticker)
+        market_conditions = market_condition_calculator.assign_market_condition(point_cloud.dates)
 
         mean_difference_of_windows = point_cloud.calculate_mean_difference_of_windows()
         mean_difference_of_windows_plot = plot_time_series(point_cloud.dates[1:], mean_difference_of_windows)
