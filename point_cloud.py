@@ -36,13 +36,13 @@ class PointCloud:
         )
         self._dates = time_delay_embedding.dates[-len(self._data):]
 
-    def calculate_standard_deviations(self) -> list[list[date | float]]:
+    def calculate_standard_deviations(self) -> npt.NDArray[np.float_]:
         """Calculate the standard deviations within each time window."""
-        return self._dates, self._data.std(axis=(1, 2))
+        return self._data.std(axis=(1, 2))
 
-    def calculate_mean_difference_of_windows(self) -> tuple[npt.NDArray[np.float_], npt.NDArray[np.float_]]:
+    def calculate_mean_difference_of_windows(self) -> npt.NDArray[np.float_]:
         """Calculate the mean of the difference of consequtive sliding windows."""
-        return self._dates[1:], (self._data[1:] - self._data[:-1]).mean(axis=(1, 2))
+        return (self._data[1:] - self._data[:-1]).mean(axis=(1, 2))
 
     @property
     def data(self) -> npt.NDArray[np.float_]:

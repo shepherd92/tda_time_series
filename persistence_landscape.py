@@ -2,14 +2,16 @@
 """Simplicial complex module. Handles a series of simplicial complexes."""
 
 from datetime import date
-from pathlib import Path
 
 import gudhi
 import gudhi.representations
-import matplotlib.pyplot as plt
+import numpy as np
+import numpy.typing as npt
 
 
 RESOLUTION = 1000
+NUM_OF_LANDSCAPES = 4
+DIMENSION = 1
 
 
 class PersistenceLandscape:
@@ -20,22 +22,18 @@ class PersistenceLandscape:
         self._company = company
         self._date = date
 
-        landscape = gudhi.representations.Landscape(resolution=RESOLUTION)
-        self._landscape = landscape.fit_transform([simplicial_complex.persistence_intervals_in_dimension(1)])
-
-    def plot(self, axes: plt.Axes, num_of_landscapes_to_plot: int) -> None:
-        """Plot persistence landscape on the given axes."""
-        for index in range(num_of_landscapes_to_plot):
-            axes.plot(self._landscape[0][index * RESOLUTION:(index + 1) * RESOLUTION])
-
-        axes.set_title(f'Persistence landscape {self.company}, {self.date}')
-
-    def save(self, directory: Path) -> None:
-        """Save the values of the persistence diagram."""
-        raise NotImplementedError
+        landscape: npt.NDArray[np.float_] = gudhi.representations.Landscape(
+            num_landscapes=NUM_OF_LANDSCAPES,
+            resolution=RESOLUTION
+        )
+        landscape = landscape.fit_transform(
+            [simplicial_complex.persistence_intervals_in_dimension(DIMENSION)]
+        )
+        self._landscape = landscape.reshape((-1, RESOLUTION))
 
     def norm(self, norm_order: int) -> float:
         """Return the norm of the persistence landscape."""
+        return (self.landscape_data**norm_order).sum()**(1. / norm_order)
 
     @property
     def company(self) -> str:
@@ -46,3 +44,8 @@ class PersistenceLandscape:
     def date(self) -> date:
         """Return the date of the point cloud."""
         return self._date
+
+    @property
+    def landscape_data(self) -> npt.NDArray[np.float_]:
+        """Return the landscape data."""
+        return self._landscape

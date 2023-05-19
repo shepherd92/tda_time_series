@@ -2,8 +2,8 @@
     "log_level": "DEBUG",
     "profiling": false,
     "num_of_processes": 1,
-    "embedding_dimension": 3,
-    "window_size": 10,
+    "embedding_dimension": 4,
+    "window_size": 20,
     "max_dimension": 2,
     "directories": {
         "data": "data",
