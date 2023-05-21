@@ -6,6 +6,8 @@ from datetime import datetime
 from enum import auto, Enum
 from pathlib import Path
 
+import numpy as np
+import numpy.typing as npt
 import pandas as pd
 
 
@@ -20,14 +22,14 @@ class MarketConditionCalculator:
 
     def __init__(self, recession_indicator_file_path: Path) -> None:
         """Construct MarketConditionCalculator object."""
-        self._data = pd.read_csv(
+        self._data: pd.Series = pd.read_csv(
             recession_indicator_file_path,
             index_col='DATE',
             parse_dates=['DATE'],
             dtype={'JHDUSRGDPBR': int},
         ).squeeze()
 
-    def assign_market_condition(self, dates: list[date]) -> list[Condition]:
+    def assign_market_condition_to_dates(self, dates: list[date]) -> list[Condition]:
         """Get market condition for a given date."""
         conditions: list[MarketConditionCalculator.Condition] = []
         for date_ in dates:
@@ -40,3 +42,17 @@ class MarketConditionCalculator:
                 conditions.append(MarketConditionCalculator.Condition.BULL)
 
         return conditions
+
+    def filter_time_series_to_condition(
+        self,
+        time_series: pd.DataFrame,
+        condition: Condition
+    ) -> npt.NDArray[np.float_]:
+        """Filter a given time series to market condition."""
+        time_series.index.to_list()
+        filter_ = [
+            condition_at_date == condition
+            for condition_at_date in self.assign_market_condition_to_dates(time_series.index.to_list())
+        ]
+
+        return time_series[filter_]
